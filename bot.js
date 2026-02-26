@@ -1,6 +1,6 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
-const { fetchMeteoraPools, getOrganicScore, getDexScreenerData } = require('./api');
+const { fetchMeteoraPools, getDexScreenerData } = require('./api');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -170,14 +170,17 @@ async function checkPools() {
         return;
     }
 
-    // Process valid pools - now handling async checks (Organic Score & DexScreener)
+    // Process valid pools - now handling async checks (DexScreener & Organic Score)
     for (const item of hotPools) {
         const { pool, feeTvl30min } = item;
         let { priorityLevel } = item;
         let finalAlertDecision = true;
 
+        // Fetch real market data from DexScreener using the base token address (includes organicScore proxy)
+        const dexData = await getDexScreenerData(pool.mint_x);
+
         // Rule: Organic Score Filter > 80
-        const organicScore = await getOrganicScore(pool.address);
+        const organicScore = dexData.organicScore;
         if (organicScore <= 80) {
             // Let the 500% APR override drop the organic score requirement, otherwise fail
             const aprRaw = parseFloat(pool.apr || '0');
@@ -185,9 +188,6 @@ async function checkPools() {
                 continue; // Skip, organic score is too low
             }
         }
-
-        // Fetch real market data from DexScreener using the base token address
-        const dexData = await getDexScreenerData(pool.mint_x);
 
         // Rule 3: 5-Min Price Volatility
         const priceChange5m = dexData.priceChange5m;
