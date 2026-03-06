@@ -7,6 +7,7 @@ async function fetchMeteoraPools(onPool) {
             method: 'get',
             url: 'https://dlmm-api.meteora.ag/pair/all',
             responseType: 'stream',
+            timeout: 30000, // 30 seconds timeout to prevent hanging the bot loop indefinitely
             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
         });
 
@@ -60,7 +61,7 @@ function calculateOrganicScore(dexPairData) {
 // Fetch market data from DexScreener using base token address (mint_x/mint_y)
 async function getDexScreenerData(tokenAddress) {
     try {
-        const response = await axios.get(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
+        const response = await axios.get(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`, { timeout: 10000 });
         if (response.data && response.data.pairs && response.data.pairs.length > 0) {
             // Sort by liquidity to get the most representative pair for the token
             const sortedPairs = response.data.pairs.sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0));

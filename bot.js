@@ -19,7 +19,34 @@ if (!chatId || chatId === 'your_chat_group_id_here') {
     process.exit(1);
 }
 
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(token, {
+    polling: {
+        interval: 1000,
+        autoStart: true,
+        params: {
+            timeout: 10
+        }
+    },
+    request: {
+        agentOptions: {
+            keepAlive: true,
+            family: 4  // Use IPv4 to prevent IPv6 DNS resolution hangups which cause EFATAL
+        }
+    }
+});
+
+// Handle polling errors (like EFATAL ECONNRESET) to prevent crashes or log spam
+bot.on('polling_error', (error) => {
+    if (error.code === 'EFATAL' || (error.message && error.message.includes('ECONNRESET'))) {
+        // These are typically transient network errors, we can safely ignore/suppress them
+        return;
+    }
+    console.error(`[polling_error] ${error.code}: ${error.message}`);
+});
+
+bot.on('error', (error) => {
+    console.error(`[error] ${error.code || 'UNKNOWN'}: ${error.message || error}`);
+});
 
 // Track alerted pools to prevent spam within 5 minutes
 // Structure: { [poolAddress]: timestampLastAlerted }
